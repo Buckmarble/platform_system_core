@@ -163,6 +163,14 @@ int SocketClient::sendData(const void *data, int len) {
 
 int SocketClient::sendDatav(struct iovec *iov, int iovcnt) {
     pthread_mutex_lock(&mWriteMutex);
+    int rc = sendDataLockedv(vec, 1);
+    pthread_mutex_unlock(&mWriteMutex);
+
+    return rc;
+}
+
+int SocketClient::sendDatav(struct iovec *iov, int iovcnt) {
+    pthread_mutex_lock(&mWriteMutex);
     int rc = sendDataLockedv(iov, iovcnt);
     pthread_mutex_unlock(&mWriteMutex);
 
@@ -193,6 +201,8 @@ int SocketClient::sendDataLockedv(struct iovec *iov, int iovcnt) {
         ssize_t rc = TEMP_FAILURE_RETRY(
             writev(mSocket, iov + current, iovcnt - current));
 
+    for (;;) {
+        ssize_t rc = writev(mSocket, iov + current, iovcnt - current);
         if (rc > 0) {
             size_t written = rc;
             while ((current < iovcnt) && (written >= iov[current].iov_len)) {
