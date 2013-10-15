@@ -212,6 +212,9 @@ typedef enum {
     AUDIO_FORMAT_PCM_SUB_8_24_BIT        = 0x4, /* PCM signed 7.24 fixed point */
     AUDIO_FORMAT_PCM_SUB_FLOAT           = 0x5, /* PCM single-precision floating point */
     AUDIO_FORMAT_PCM_SUB_24_BIT_PACKED   = 0x6, /* PCM signed .23 fixed point packed in 3 bytes */
+#ifdef QCOM_HARDWARE
+    AUDIO_FORMAT_PCM_SUB_24_BIT          = 0x5, /* PCM signed 24 fixed point */
+#endif
 } audio_format_pcm_sub_fmt_t;
 
 /* The audio_format_*_sub_fmt_t declarations are not currently used */
@@ -249,7 +252,16 @@ typedef enum {
     AUDIO_FORMAT_VORBIS_SUB_NONE         = 0x0,
 } audio_format_vorbis_sub_fmt_t;
 
-/* Audio format consists of a main format field (upper 8 bits) and a sub format
+#ifdef QCOM_HARDWARE
+/* DOLBY (AC3/EAC3) sub format field definition: specify dual-mono acmod... */
+
+typedef enum {
+     AUDIO_FORMAT_DOLBY_SUB_NONE         = 0x0,
+     AUDIO_FORMAT_DOLBY_SUB_DM           = 0x1, /* Clips with the Dual Mono content*/
+} audio_format_dolby_sub_fmt_t;
+#endif
+
+/* Audio format consists in a main format field (upper 8 bits) and a sub format
  * field (lower 24 bits).
  *
  * The main format indicates the main codec type. The sub format field
@@ -327,6 +339,14 @@ typedef enum {
                                         AUDIO_FORMAT_AAC_SUB_HE_V2),
     AUDIO_FORMAT_AAC_ELD             = (AUDIO_FORMAT_AAC |
                                         AUDIO_FORMAT_AAC_SUB_ELD),
+#ifdef QCOM_HARDWARE
+    AUDIO_FORMAT_PCM_24_BIT          = (AUDIO_FORMAT_PCM |
+                                          AUDIO_FORMAT_PCM_SUB_24_BIT),
+    AUDIO_FORMAT_AC3_DM              =  (AUDIO_FORMAT_AC3 |
+                                          AUDIO_FORMAT_DOLBY_SUB_DM),
+    AUDIO_FORMAT_EAC3_DM             =  (AUDIO_FORMAT_EAC3 |
+                                          AUDIO_FORMAT_DOLBY_SUB_DM),
+#endif
 } audio_format_t;
 
 /* For the channel mask for position assignment representation */
