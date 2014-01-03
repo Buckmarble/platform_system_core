@@ -22,9 +22,11 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include <utime.h>
+#include <unistd.h>
 
 #include <errno.h>
-
+#include <private/android_filesystem_config.h>
+#include <selinux/android.h>
 #include "sysdeps.h"
 
 #define TRACE_TAG  TRACE_SYNC
@@ -32,12 +34,16 @@
 #include "file_sync_service.h"
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 971635c... adb: configure /system file permission with fs_config
 /* TODO: use fs_config to configure permissions on /data */
 static bool is_on_system(const char *name) {
     const char *SYSTEM = "/system/";
     return (strncmp(SYSTEM, name, strlen(SYSTEM)) == 0);
 }
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 static bool is_on_vendor(const char *name) {
     const char *VENDOR = "/vendor/";
@@ -48,10 +54,17 @@ static bool is_on_vendor(const char *name) {
 >>>>>>> c589592... Fix "adb push /sdcard/filename"
 =======
 >>>>>>> bd6c99e... Revert "Fix "adb push /sdcard/filename""
+=======
+>>>>>>> 971635c... adb: configure /system file permission with fs_config
 static int mkdirs(char *name)
 {
     int ret;
     char *x = name + 1;
+    unsigned int uid, gid;
+    unsigned int mode = 0775;
+    uint64_t cap = 0;
+    uid = getuid();
+    gid = getgid();
 
     if(name[0] != '/') return -1;
 
@@ -59,6 +72,7 @@ static int mkdirs(char *name)
         x = adb_dirstart(x);
         if(x == 0) return 0;
         *x = 0;
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
         if (is_on_system(name) || is_on_vendor(name)) {
@@ -71,11 +85,20 @@ static int mkdirs(char *name)
 =======
         ret = adb_mkdir(name, 0775);
 >>>>>>> bd6c99e... Revert "Fix "adb push /sdcard/filename""
+=======
+        if (is_on_system(name)) {
+            fs_config(name, 1, &uid, &gid, &mode, &cap);
+        }
+        ret = adb_mkdir(name, mode);
+>>>>>>> 971635c... adb: configure /system file permission with fs_config
         if((ret < 0) && (errno != EEXIST)) {
             D("mkdir(\"%s\") -> %s\n", name, strerror(errno));
             *x = '/';
             return ret;
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 971635c... adb: configure /system file permission with fs_config
         } else if(ret == 0) {
             ret = chown(name, uid, gid);
             if (ret < 0) {
@@ -83,12 +106,16 @@ static int mkdirs(char *name)
                 return ret;
             }
 <<<<<<< HEAD
+<<<<<<< HEAD
             selinux_android_restorecon(name, 0);
 =======
             selinux_android_restorecon(name);
 >>>>>>> c589592... Fix "adb push /sdcard/filename"
 =======
 >>>>>>> bd6c99e... Revert "Fix "adb push /sdcard/filename""
+=======
+            selinux_android_restorecon(name);
+>>>>>>> 971635c... adb: configure /system file permission with fs_config
         }
         *x++ = '/';
     }
@@ -192,6 +219,7 @@ static int fail_errno(int s)
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 static int handle_send_file(int s, char *path, uid_t uid,
 <<<<<<< HEAD
         gid_t gid, mode_t mode, char *buffer, bool do_unlink)
@@ -201,6 +229,10 @@ static int handle_send_file(int s, char *path, uid_t uid,
 =======
 static int handle_send_file(int s, char *path, mode_t mode, char *buffer)
 >>>>>>> bd6c99e... Revert "Fix "adb push /sdcard/filename""
+=======
+static int handle_send_file(int s, char *path, unsigned int uid,
+        unsigned int gid, mode_t mode, char *buffer)
+>>>>>>> 971635c... adb: configure /system file permission with fs_config
 {
     syncmsg msg;
     unsigned int timestamp = 0;
@@ -209,11 +241,15 @@ static int handle_send_file(int s, char *path, mode_t mode, char *buffer)
     fd = adb_open_mode(path, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, mode);
     if(fd < 0 && errno == ENOENT) {
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 971635c... adb: configure /system file permission with fs_config
         if(mkdirs(path) != 0) {
             if(fail_errno(s))
                 return -1;
             fd = -1;
         } else {
+<<<<<<< HEAD
 <<<<<<< HEAD
             fd = adb_open_mode(path, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, mode);
 =======
@@ -224,6 +260,10 @@ static int handle_send_file(int s, char *path, mode_t mode, char *buffer)
         mkdirs(path);
         fd = adb_open_mode(path, O_WRONLY | O_CREAT | O_EXCL, mode);
 >>>>>>> bd6c99e... Revert "Fix "adb push /sdcard/filename""
+=======
+            fd = adb_open_mode(path, O_WRONLY | O_CREAT | O_EXCL, mode);
+        }
+>>>>>>> 971635c... adb: configure /system file permission with fs_config
     }
     if(fd < 0 && errno == EEXIST) {
         fd = adb_open_mode(path, O_WRONLY | O_CLOEXEC, mode);
@@ -233,11 +273,15 @@ static int handle_send_file(int s, char *path, mode_t mode, char *buffer)
             return -1;
         fd = -1;
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 971635c... adb: configure /system file permission with fs_config
     } else {
         if(fchown(fd, uid, gid) != 0) {
             fail_errno(s);
             errno = 0;
         }
+<<<<<<< HEAD
 
         /*
 <<<<<<< HEAD
@@ -254,6 +298,13 @@ static int handle_send_file(int s, char *path, mode_t mode, char *buffer)
         fchmod(fd, mode);
 =======
 >>>>>>> bd6c99e... Revert "Fix "adb push /sdcard/filename""
+=======
+        /* fchown clears the setuid bit - restore it if present */
+        if(fchmod(fd, mode) != 0) {
+            fail_errno(s);
+            errno = 0;
+        }
+>>>>>>> 971635c... adb: configure /system file permission with fs_config
     }
 
     for(;;) {
@@ -295,12 +346,16 @@ static int handle_send_file(int s, char *path, mode_t mode, char *buffer)
         adb_close(fd);
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
         selinux_android_restorecon(path, 0);
 =======
         selinux_android_restorecon(path);
 >>>>>>> c589592... Fix "adb push /sdcard/filename"
 =======
 >>>>>>> bd6c99e... Revert "Fix "adb push /sdcard/filename""
+=======
+        selinux_android_restorecon(path);
+>>>>>>> 971635c... adb: configure /system file permission with fs_config
         u.actime = timestamp;
         u.modtime = timestamp;
         utime(path, &u);
@@ -344,7 +399,10 @@ static int handle_send_link(int s, char *path, char *buffer)
 
     ret = symlink(buffer, path);
     if(ret && errno == ENOENT) {
-        mkdirs(path);
+        if(mkdirs(path) != 0) {
+            fail_errno(s);
+            return -1;
+        }
         ret = symlink(buffer, path);
     }
     if(ret) {
@@ -372,7 +430,7 @@ static int handle_send_link(int s, char *path, char *buffer)
 static int do_send(int s, char *path, char *buffer)
 {
     char *tmp;
-    mode_t mode;
+    unsigned int mode;
     int is_link, ret;
     bool do_unlink;
 
@@ -384,7 +442,7 @@ static int do_send(int s, char *path, char *buffer)
 #ifndef HAVE_SYMLINKS
         is_link = 0;
 #else
-        is_link = S_ISLNK(mode);
+        is_link = S_ISLNK((mode_t) mode);
 #endif
         mode &= 0777;
     }
@@ -408,29 +466,43 @@ static int do_send(int s, char *path, char *buffer)
 #else
     {
 #endif
+        unsigned int uid, gid;
+        uint64_t cap = 0;
+        uid = getuid();
+        gid = getgid();
+
         /* copy user permission bits to "group" and "other" permissions */
         mode |= ((mode >> 3) & 0070);
         mode |= ((mode >> 3) & 0007);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 971635c... adb: configure /system file permission with fs_config
         tmp = path;
         if(*tmp == '/') {
             tmp++;
         }
+<<<<<<< HEAD
 <<<<<<< HEAD
         if (is_on_system(path) || is_on_vendor(path)) {
             fs_config(tmp, 0, &uid, &gid, &mode, &cap);
         }
         ret = handle_send_file(s, path, uid, gid, mode, buffer, do_unlink);
 =======
+=======
+>>>>>>> 971635c... adb: configure /system file permission with fs_config
         if (is_on_system(path)) {
             fs_config(tmp, 0, &uid, &gid, &mode, &cap);
         }
         ret = handle_send_file(s, path, uid, gid, mode, buffer);
+<<<<<<< HEAD
 >>>>>>> c589592... Fix "adb push /sdcard/filename"
 =======
         ret = handle_send_file(s, path, mode, buffer);
 >>>>>>> bd6c99e... Revert "Fix "adb push /sdcard/filename""
+=======
+>>>>>>> 971635c... adb: configure /system file permission with fs_config
     }
 
     return ret;
