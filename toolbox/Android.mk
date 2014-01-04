@@ -196,12 +196,88 @@ OUR_TOOLS := \
     vmstat \
     watchprops \
     wipe \
+TOOLS := \
+	ls \
+	mount \
+	cat \
+	ps \
+	kill \
+	ln \
+	insmod \
+	rmmod \
+	lsmod \
+	ifconfig \
+	setconsole \
+	rm \
+	mkdir \
+	rmdir \
+	getevent \
+	sendevent \
+	date \
+	wipe \
+	sync \
+	umount \
+	start \
+	stop \
+	notify \
+	cmp \
+	dmesg \
+	route \
+	hd \
+	dd \
+	df \
+	getprop \
+	setprop \
+	watchprops \
+	log \
+	sleep \
+	renice \
+	printenv \
+	smd \
+	chmod \
+	chown \
+	newfs_msdos \
+	netstat \
+	ioctl \
+	mv \
+	schedtop \
+	top \
+	iftop \
+	id \
+	uptime \
+	vmstat \
+	nandread \
+	ionice \
+	touch \
+	lsof \
+	du \
+	md5 \
+	clear \
+	restart \
+	getenforce \
+	setenforce \
+	chcon \
+	restorecon \
+	runcon \
+	getsebool \
+	setsebool \
+	load_policy \
+	swapon \
+	swapoff \
+	mkswap \
+	readlink
 
 ifneq (,$(filter userdebug eng,$(TARGET_BUILD_VARIANT)))
 OUR_TOOLS += r
 endif
 
 ALL_TOOLS = $(BSD_TOOLS) $(OUR_TOOLS)
+TOOLS += setfattr
+
+ALL_TOOLS = $(TOOLS)
+ALL_TOOLS += \
+	cp \
+	grep
 
 LOCAL_SRC_FILES := \
     upstream-netbsd/lib/libc/gen/getbsize.c \

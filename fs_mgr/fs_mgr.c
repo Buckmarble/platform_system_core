@@ -56,6 +56,56 @@
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(*(a)))
 
+struct flag_list {
+    const char *name;
+    unsigned flag;
+};
+
+static struct flag_list mount_flags[] = {
+    { "noatime",    MS_NOATIME },
+    { "noexec",     MS_NOEXEC },
+    { "nosuid",     MS_NOSUID },
+    { "nodev",      MS_NODEV },
+    { "nodiratime", MS_NODIRATIME },
+    { "ro",         MS_RDONLY },
+    { "rw",         0 },
+    { "remount",    MS_REMOUNT },
+    { "bind",       MS_BIND },
+    { "rec",        MS_REC },
+    { "unbindable", MS_UNBINDABLE },
+    { "private",    MS_PRIVATE },
+    { "slave",      MS_SLAVE },
+    { "shared",     MS_SHARED },
+    { "sync",       MS_SYNCHRONOUS },
+    { "defaults",   0 },
+    { 0,            0 },
+};
+
+static struct flag_list fs_mgr_flags[] = {
+    { "wait",        MF_WAIT },
+    { "check",       MF_CHECK },
+    { "encryptable=",MF_CRYPT },
+    { "nonremovable",MF_NONREMOVABLE },
+    { "voldmanaged=",MF_VOLDMANAGED},
+    { "length=",     MF_LENGTH },
+    { "recoveryonly",MF_RECOVERYONLY },
+    { "swapprio=",   MF_SWAPPRIO },
+    { "zramsize=",   MF_ZRAMSIZE },
+    { "verify",      MF_VERIFY },
+    { "noemulatedsd", MF_NOEMULATEDSD },
+    { "defaults",    0 },
+    { 0,             0 },
+};
+
+struct fs_mgr_flag_values {
+    char *key_loc;
+    long long part_length;
+    char *label;
+    int partnum;
+    int swap_prio;
+    unsigned int zram_size;
+};
+
 /*
  * gettime() - returns the time in seconds of the system's monotonic clock or
  * zero on error.

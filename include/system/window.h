@@ -31,6 +31,8 @@
 #endif
 #ifndef __deprecated
 #define __deprecated __attribute__((__deprecated__))
+#ifdef __cplusplus
+#include <string.h>
 #endif
 
 __BEGIN_DECLS
@@ -294,6 +296,8 @@ enum {
     NATIVE_WINDOW_SET_POST_TRANSFORM_CROP   = 16,   /* private */
     NATIVE_WINDOW_SET_BUFFERS_STICKY_TRANSFORM = 17,/* private */
     NATIVE_WINDOW_SET_SIDEBAND_STREAM       = 18,
+    NATIVE_WINDOW_SET_BUFFERS_SIZE          = 17,   /* private */
+    NATIVE_WINDOW_UPDATE_BUFFERS_GEOMETRY   = 18,   /* private */
 };
 
 /* parameter for NATIVE_WINDOW_[API_][DIS]CONNECT */

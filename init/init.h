@@ -80,7 +80,9 @@ struct svcenvinfo {
 #define SVC_RESTART     0x100 /* Use to safely restart (stop, wait, start) a service */
 #define SVC_DISABLED_START 0x200 /* a start was requested but it was disabled at the time */
 
+#ifndef NR_SVC_SUPP_GIDS
 #define NR_SVC_SUPP_GIDS 12    /* twelve supplementary groups */
+#endif
 
 #define COMMAND_RETRY_TIMEOUT 5
 
@@ -137,6 +139,12 @@ void service_reset(struct service *svc);
 void service_restart(struct service *svc);
 void service_start(struct service *svc, const char *dynamic_args);
 void property_changed(const char *name, const char *value);
+
+#ifdef INITLOGO
+#define INIT_IMAGE_FILE	"/initlogo.rle"
+
+int load_565rle_image( char *file_name );
+#endif
 
 extern struct selabel_handle *sehandle;
 extern struct selabel_handle *sehandle_prop;

@@ -243,7 +243,9 @@ static void show_help(const char *cmd)
                     "                  represents an automatic quicker pruning for the noisiest\n"
                     "                  UID as determined by the current statistics.\n"
                     "  -P '<list> ...' set prune white and ~black list, using same format as\n"
-                    "                  printed above. Must be quoted.\n");
+                    "                  printed above. Must be quoted.\n"
+                    "  -C              colored output");
+
 
     fprintf(stderr,"\nfilterspecs are a series of \n"
                    "  <tag>[:priority]\n\n"
@@ -307,6 +309,12 @@ static const char *multiplier_of_size(unsigned long value)
             value /= 1024, ++i) ;
     return multipliers[i];
 }
+static void setColoredOutput()
+{
+    android_log_setColoredOutput(g_logformat);
+}
+
+extern "C" void logprint_run_tests(void);
 
 int main(int argc, char **argv)
 {
@@ -339,7 +347,7 @@ int main(int argc, char **argv)
     for (;;) {
         int ret;
 
-        ret = getopt(argc, argv, "cdt:T:gG:sQf:r:n:v:b:BSpP:");
+        ret = getopt(argc, argv, "cdt:gsQf:r::n:v:b:BC");
 
         if (ret < 0) {
             break;
@@ -439,6 +447,8 @@ int main(int argc, char **argv)
 
             case 'P':
                 setPruneList = optarg;
+            case 'C':
+                setColoredOutput();
             break;
 
             case 'b': {

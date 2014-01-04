@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2013 The Android Open Source Project
+ * Copyright (C) 2013 The CyanogenMod Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,6 +43,7 @@ using namespace android;
 static struct healthd_config healthd_config = {
     .periodic_chores_interval_fast = DEFAULT_PERIODIC_CHORES_INTERVAL_FAST,
     .periodic_chores_interval_slow = DEFAULT_PERIODIC_CHORES_INTERVAL_SLOW,
+
     .batteryStatusPath = String8(String8::kEmptyString),
     .batteryHealthPath = String8(String8::kEmptyString),
     .batteryPresentPath = String8(String8::kEmptyString),
@@ -53,6 +55,17 @@ static struct healthd_config healthd_config = {
     .batteryCurrentAvgPath = String8(String8::kEmptyString),
     .batteryChargeCounterPath = String8(String8::kEmptyString),
     .energyCounter = NULL,
+
+    .dockBatterySupported = false,
+    .dockBatteryStatusPath = String8(String8::kEmptyString),
+    .dockBatteryHealthPath = String8(String8::kEmptyString),
+    .dockBatteryPresentPath = String8(String8::kEmptyString),
+    .dockBatteryCapacityPath = String8(String8::kEmptyString),
+    .dockBatteryVoltagePath = String8(String8::kEmptyString),
+    .dockBatteryTemperaturePath = String8(String8::kEmptyString),
+    .dockBatteryTechnologyPath = String8(String8::kEmptyString),
+    .dockBatteryCurrentNowPath = String8(String8::kEmptyString),
+    .dockBatteryChargeCounterPath = String8(String8::kEmptyString),
 };
 
 static int eventct;
