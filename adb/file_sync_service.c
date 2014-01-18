@@ -1,18 +1,18 @@
 /*
- * Copyright (C) 2007 The Android Open Source Project
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+* Copyright (C) 2007 The Android Open Source Project
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+* http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -29,7 +29,7 @@
 #include <selinux/android.h>
 #include "sysdeps.h"
 
-#define TRACE_TAG  TRACE_SYNC
+#define TRACE_TAG TRACE_SYNC
 #include "adb.h"
 #include "file_sync_service.h"
 
@@ -39,11 +39,14 @@ static bool is_on_system(const char *name) {
     return (strncmp(SYSTEM, name, strlen(SYSTEM)) == 0);
 }
 
+<<<<<<< HEAD
 static bool is_on_vendor(const char *name) {
     const char *VENDOR = "/vendor/";
     return (strncmp(VENDOR, name, strlen(VENDOR)) == 0);
 }
 
+=======
+>>>>>>> c589592... Fix "adb push /sdcard/filename"
 static int mkdirs(char *name)
 {
     int ret;
@@ -59,7 +62,11 @@ static int mkdirs(char *name)
         x = adb_dirstart(x);
         if(x == 0) return 0;
         *x = 0;
+<<<<<<< HEAD
         if (is_on_system(name) || is_on_vendor(name)) {
+=======
+        if (is_on_system(name)) {
+>>>>>>> c589592... Fix "adb push /sdcard/filename"
             fs_config(name, 1, &uid, &gid, &mode, &cap);
         }
         ret = adb_mkdir(name, mode);
@@ -73,7 +80,11 @@ static int mkdirs(char *name)
                 *x = '/';
                 return ret;
             }
+<<<<<<< HEAD
             selinux_android_restorecon(name, 0);
+=======
+            selinux_android_restorecon(name);
+>>>>>>> c589592... Fix "adb push /sdcard/filename"
         }
         *x++ = '/';
     }
@@ -125,7 +136,7 @@ static int do_list(int s, const char *path)
         int len = strlen(de->d_name);
 
             /* not supposed to be possible, but
-               if it does happen, let's not buffer overrun */
+if it does happen, let's not buffer overrun */
         if(len > 256) continue;
 
         strcpy(fname, de->d_name);
@@ -177,7 +188,11 @@ static int fail_errno(int s)
 }
 
 static int handle_send_file(int s, char *path, uid_t uid,
+<<<<<<< HEAD
         gid_t gid, mode_t mode, char *buffer, bool do_unlink)
+=======
+        gid_t gid, mode_t mode, char *buffer)
+>>>>>>> c589592... Fix "adb push /sdcard/filename"
 {
     syncmsg msg;
     unsigned int timestamp = 0;
@@ -190,7 +205,11 @@ static int handle_send_file(int s, char *path, uid_t uid,
                 return -1;
             fd = -1;
         } else {
+<<<<<<< HEAD
             fd = adb_open_mode(path, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, mode);
+=======
+            fd = adb_open_mode(path, O_WRONLY | O_CREAT | O_EXCL, mode);
+>>>>>>> c589592... Fix "adb push /sdcard/filename"
         }
     }
     if(fd < 0 && errno == EEXIST) {
@@ -207,10 +226,17 @@ static int handle_send_file(int s, char *path, uid_t uid,
         }
 
         /*
+<<<<<<< HEAD
          * fchown clears the setuid bit - restore it if present.
          * Ignore the result of calling fchmod. It's not supported
          * by all filesystems. b/12441485
          */
+=======
+* fchown clears the setuid bit - restore it if present.
+* Ignore the result of calling fchmod. It's not supported
+* by all filesystems. b/12441485
+*/
+>>>>>>> c589592... Fix "adb push /sdcard/filename"
         fchmod(fd, mode);
     }
 
@@ -251,7 +277,11 @@ static int handle_send_file(int s, char *path, uid_t uid,
     if(fd >= 0) {
         struct utimbuf u;
         adb_close(fd);
+<<<<<<< HEAD
         selinux_android_restorecon(path, 0);
+=======
+        selinux_android_restorecon(path);
+>>>>>>> c589592... Fix "adb push /sdcard/filename"
         u.actime = timestamp;
         u.modtime = timestamp;
         utime(path, &u);
@@ -374,10 +404,17 @@ static int do_send(int s, char *path, char *buffer)
         if(*tmp == '/') {
             tmp++;
         }
+<<<<<<< HEAD
         if (is_on_system(path) || is_on_vendor(path)) {
             fs_config(tmp, 0, &uid, &gid, &mode, &cap);
         }
         ret = handle_send_file(s, path, uid, gid, mode, buffer, do_unlink);
+=======
+        if (is_on_system(path)) {
+            fs_config(tmp, 0, &uid, &gid, &mode, &cap);
+        }
+        ret = handle_send_file(s, path, uid, gid, mode, buffer);
+>>>>>>> c589592... Fix "adb push /sdcard/filename"
     }
 
     return ret;
