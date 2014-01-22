@@ -136,6 +136,269 @@ static int wait_for_file(const char *filename, int timeout)
     return ret;
 }
 
+static int parse_flags(char *flags, struct flag_list *fl,
+                       struct fs_mgr_flag_values *flag_vals,
+                       char *fs_options, int fs_options_len)
+{
+    int f = 0;
+    int i;
+    char *p;
+    char *savep;
+
+    /* initialize flag values.  If we find a relevant flag, we'll
+     * update the value */
+    if (flag_vals) {
+        memset(flag_vals, 0, sizeof(*flag_vals));
+        flag_vals->partnum = -1;
+        flag_vals->swap_prio = -1; /* negative means it wasn't specified. */
+    }
+
+    /* initialize fs_options to the null string */
+    if (fs_options && (fs_options_len > 0)) {
+        fs_options[0] = '\0';
+    }
+
+    p = strtok_r(flags, ",", &savep);
+    while (p) {
+        /* Look for the flag "p" in the flag list "fl"
+         * If not found, the loop exits with fl[i].name being null.
+         */
+        for (i = 0; fl[i].name; i++) {
+            if (!strncmp(p, fl[i].name, strlen(fl[i].name))) {
+                f |= fl[i].flag;
+                if ((fl[i].flag == MF_CRYPT) && flag_vals) {
+                    /* The encryptable flag is followed by an = and the
+                     * location of the keys.  Get it and return it.
+                     */
+                    flag_vals->key_loc = strdup(strchr(p, '=') + 1);
+                } else if ((fl[i].flag == MF_LENGTH) && flag_vals) {
+                    /* The length flag is followed by an = and the
+                     * size of the partition.  Get it and return it.
+                     */
+                    flag_vals->part_length = strtoll(strchr(p, '=') + 1, NULL, 0);
+                } else if ((fl[i].flag == MF_VOLDMANAGED) && flag_vals) {
+                    /* The voldmanaged flag is followed by an = and the
+                     * label, a colon and the partition number or the
+                     * word "auto", e.g.
+                     *   voldmanaged=sdcard:3
+                     * Get and return them.
+                     */
+                    char *label_start;
+                    char *label_end;
+                    char *part_start;
+
+                    label_start = strchr(p, '=') + 1;
+                    label_end = strchr(p, ':');
+                    if (label_end) {
+                        flag_vals->label = strndup(label_start,
+                                                   (int) (label_end - label_start));
+                        part_start = strchr(p, ':') + 1;
+                        if (!strcmp(part_start, "auto")) {
+                            flag_vals->partnum = -1;
+                        } else {
+                            flag_vals->partnum = strtol(part_start, NULL, 0);
+                        }
+                    } else {
+                        ERROR("Warning: voldmanaged= flag malformed\n");
+                    }
+                } else if ((fl[i].flag == MF_SWAPPRIO) && flag_vals) {
+                    flag_vals->swap_prio = strtoll(strchr(p, '=') + 1, NULL, 0);
+                } else if ((fl[i].flag == MF_ZRAMSIZE) && flag_vals) {
+                    flag_vals->zram_size = strtoll(strchr(p, '=') + 1, NULL, 0);
+                }
+                break;
+            }
+        }
+
+        if (!fl[i].name) {
+            if (fs_options) {
+                /* It's not a known flag, so it must be a filesystem specific
+                 * option.  Add it to fs_options if it was passed in.
+                 */
+                strlcat(fs_options, p, fs_options_len);
+                strlcat(fs_options, ",", fs_options_len);
+            } else {
+                /* fs_options was not passed in, so if the flag is unknown
+                 * it's an error.
+                 */
+                ERROR("Warning: unknown flag %s\n", p);
+            }
+        }
+        p = strtok_r(NULL, ",", &savep);
+    }
+
+out:
+    if (fs_options && fs_options[0]) {
+        /* remove the last trailing comma from the list of options */
+        fs_options[strlen(fs_options) - 1] = '\0';
+    }
+
+    return f;
+}
+
+struct fstab *fs_mgr_read_fstab(const char *fstab_path)
+{
+    FILE *fstab_file;
+    int cnt, entries;
+    ssize_t len;
+    size_t alloc_len = 0;
+    char *line = NULL;
+    const char *delim = " \t";
+    char *save_ptr, *p;
+    struct fstab *fstab = NULL;
+    struct fstab_rec *recs;
+    struct fs_mgr_flag_values flag_vals;
+#define FS_OPTIONS_LEN 1024
+    char tmp_fs_options[FS_OPTIONS_LEN];
+
+    fstab_file = fopen(fstab_path, "r");
+    if (!fstab_file) {
+        ERROR("Cannot open file %s\n", fstab_path);
+        return 0;
+    }
+
+    entries = 0;
+    while ((len = getline(&line, &alloc_len, fstab_file)) != -1) {
+        /* if the last character is a newline, shorten the string by 1 byte */
+        if (line[len - 1] == '\n') {
+            line[len - 1] = '\0';
+        }
+        /* Skip any leading whitespace */
+        p = line;
+        while (isspace(*p)) {
+            p++;
+        }
+        /* ignore comments or empty lines */
+        if (*p == '#' || *p == '\0')
+            continue;
+        entries++;
+    }
+
+    if (!entries) {
+        ERROR("No entries found in fstab\n");
+        goto err;
+    }
+
+    /* Allocate and init the fstab structure */
+    fstab = calloc(1, sizeof(struct fstab));
+    fstab->num_entries = entries;
+    fstab->fstab_filename = strdup(fstab_path);
+    fstab->recs = calloc(fstab->num_entries, sizeof(struct fstab_rec));
+
+    fseek(fstab_file, 0, SEEK_SET);
+
+    cnt = 0;
+    while ((len = getline(&line, &alloc_len, fstab_file)) != -1) {
+        /* if the last character is a newline, shorten the string by 1 byte */
+        if (line[len - 1] == '\n') {
+            line[len - 1] = '\0';
+        }
+
+        /* Skip any leading whitespace */
+        p = line;
+        while (isspace(*p)) {
+            p++;
+        }
+        /* ignore comments or empty lines */
+        if (*p == '#' || *p == '\0')
+            continue;
+
+        /* If a non-comment entry is greater than the size we allocated, give an
+         * error and quit.  This can happen in the unlikely case the file changes
+         * between the two reads.
+         */
+        if (cnt >= entries) {
+            ERROR("Tried to process more entries than counted\n");
+            break;
+        }
+
+        if (!(p = strtok_r(line, delim, &save_ptr))) {
+            ERROR("Error parsing mount source\n");
+            goto err;
+        }
+        fstab->recs[cnt].blk_device = strdup(p);
+
+        if (!(p = strtok_r(NULL, delim, &save_ptr))) {
+            ERROR("Error parsing mount_point\n");
+            goto err;
+        }
+        fstab->recs[cnt].mount_point = strdup(p);
+
+        if (!(p = strtok_r(NULL, delim, &save_ptr))) {
+            ERROR("Error parsing fs_type\n");
+            goto err;
+        }
+        fstab->recs[cnt].fs_type = strdup(p);
+
+        if (!(p = strtok_r(NULL, delim, &save_ptr))) {
+            ERROR("Error parsing mount_flags\n");
+            goto err;
+        }
+        tmp_fs_options[0] = '\0';
+        fstab->recs[cnt].flags = parse_flags(p, mount_flags, NULL,
+                                       tmp_fs_options, FS_OPTIONS_LEN);
+
+        /* fs_options are optional */
+        if (tmp_fs_options[0]) {
+            fstab->recs[cnt].fs_options = strdup(tmp_fs_options);
+        } else {
+            fstab->recs[cnt].fs_options = NULL;
+        }
+
+        if (!(p = strtok_r(NULL, delim, &save_ptr))) {
+            ERROR("Error parsing fs_mgr_options\n");
+            goto err;
+        }
+        fstab->recs[cnt].fs_mgr_flags = parse_flags(p, fs_mgr_flags,
+                                                    &flag_vals, NULL, 0);
+        fstab->recs[cnt].key_loc = flag_vals.key_loc;
+        fstab->recs[cnt].length = flag_vals.part_length;
+        fstab->recs[cnt].label = flag_vals.label;
+        fstab->recs[cnt].partnum = flag_vals.partnum;
+        fstab->recs[cnt].swap_prio = flag_vals.swap_prio;
+        fstab->recs[cnt].zram_size = flag_vals.zram_size;
+        cnt++;
+    }
+    fclose(fstab_file);
+    free(line);
+    return fstab;
+
+err:
+    fclose(fstab_file);
+    free(line);
+    if (fstab)
+        fs_mgr_free_fstab(fstab);
+    return NULL;
+}
+
+void fs_mgr_free_fstab(struct fstab *fstab)
+{
+    int i;
+
+    if (!fstab) {
+        return;
+    }
+
+    for (i = 0; i < fstab->num_entries; i++) {
+        /* Free the pointers return by strdup(3) */
+        free(fstab->recs[i].blk_device);
+        free(fstab->recs[i].mount_point);
+        free(fstab->recs[i].fs_type);
+        free(fstab->recs[i].fs_options);
+        free(fstab->recs[i].key_loc);
+        free(fstab->recs[i].label);
+    }
+
+    /* Free the fstab_recs array created by calloc(3) */
+    free(fstab->recs);
+
+    /* Free the fstab filename */
+    free(fstab->fstab_filename);
+
+    /* Free fstab */
+    free(fstab);
+}
+
 static void check_fs(char *blk_device, char *fs_type, char *target)
 {
     int status;
@@ -378,6 +641,7 @@ int fs_mgr_mount_all(struct fstab *fstab)
     int mret = -1;
     int mount_errno = 0;
     int attempted_idx = -1;
+    int mount_errno;
 
     if (!fstab) {
         return -1;
@@ -455,15 +719,27 @@ int fs_mgr_mount_all(struct fstab *fstab)
                     ++error_count;
                     continue;
                 }
+        /* back up errno as partition_wipe clobbers the value */
+        mount_errno = errno;
+
+        /* mount(2) returned an error, check if it's encrypted and deal with it */
+        if ((fstab->recs[i].fs_mgr_flags & MF_CRYPT) &&
+            !partition_wiped(fstab->recs[i].blk_device)) {
+            /* Need to mount a tmpfs at this mountpoint for now, and set
+             * properties that vold will query later for decrypting
+             */
+            if (mount("tmpfs", fstab->recs[i].mount_point, "tmpfs",
+                  MS_NOATIME | MS_NOSUID | MS_NODEV, CRYPTO_TMPFS_OPTIONS) < 0) {
+                ERROR("Cannot mount tmpfs filesystem for encrypted fs at %s error: %s\n",
+                        fstab->recs[i].mount_point, strerror(errno));
+                goto out;
             }
             encryptable = FS_MGR_MNTALL_DEV_MIGHT_BE_ENCRYPTED;
         } else {
             ERROR("Failed to mount an un-encryptable or wiped partition on"
-                   "%s at %s options: %s error: %s\n",
-                   fstab->recs[attempted_idx].blk_device, fstab->recs[attempted_idx].mount_point,
-                   fstab->recs[attempted_idx].fs_options, strerror(mount_errno));
-            ++error_count;
-            continue;
+                    "%s at %s options: %s error: %s\n",
+                    fstab->recs[i].blk_device, fstab->recs[i].mount_point,
+                    fstab->recs[i].fs_options, strerror(mount_errno));            goto out;
         }
     }
 
@@ -531,10 +807,11 @@ int fs_mgr_do_mount(struct fstab *fstab, char *n_name, char *n_blk_device,
         } else {
             m = fstab->recs[i].mount_point;
         }
-        if (__mount(n_blk_device, m, &fstab->recs[i])) {
-            if (!first_mount_errno) first_mount_errno = errno;
-            mount_errors++;
-            continue;
+        if (__mount(n_blk_device, m, fstab->recs[i].fs_type,
+                    fstab->recs[i].flags, fstab->recs[i].fs_options)) {
+            ERROR("Cannot mount filesystem on %s at %s options: %s error: %s\n",
+                n_blk_device, m, fstab->recs[i].fs_options, strerror(errno));
+            goto out;
         } else {
             ret = 0;
             goto out;
