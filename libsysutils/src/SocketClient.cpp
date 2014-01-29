@@ -202,7 +202,9 @@ int SocketClient::sendDataLockedv(struct iovec *iov, int iovcnt) {
             writev(mSocket, iov + current, iovcnt - current));
 
     for (;;) {
-        ssize_t rc = writev(mSocket, iov + current, iovcnt - current);
+        ssize_t rc = TEMP_FAILURE_RETRY(
+            writev(mSocket, iov + current, iovcnt - current));
+
         if (rc > 0) {
             size_t written = rc;
             while ((current < iovcnt) && (written >= iov[current].iov_len)) {
